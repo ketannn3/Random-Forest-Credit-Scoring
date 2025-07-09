@@ -3,11 +3,9 @@ import pandas as pd
 import numpy as np
 import joblib
 
-# Load trained model
+# Load model and training columns
 model = joblib.load("credit_random_forest.pkl")
-
-# Column list used during training (one-hot encoded)
-columns = joblib.load("model_columns.pkl")  # We'll save these from training
+columns = joblib.load("model_columns.pkl")  # exact training feature names
 
 st.set_page_config(page_title="Credit Risk Predictor", layout="centered")
 st.title("🏦 German Credit Risk Prediction App")
@@ -34,7 +32,7 @@ liable_people = st.slider("Number of Liable People", 1, 2, 1)
 telephone = st.selectbox("Telephone", ["A191", "A192"])
 foreign_worker = st.selectbox("Foreign Worker", ["A201", "A202"])
 
-# --- Prediction Button ---
+# --- Predict Button ---
 if st.button("🔮 Predict Credit Risk"):
     input_dict = {
         "Status": status,
@@ -59,15 +57,16 @@ if st.button("🔮 Predict Credit Risk"):
         "ForeignWorker": foreign_worker
     }
 
+    # Create DataFrame and one-hot encode
     input_df = pd.DataFrame([input_dict])
     input_encoded = pd.get_dummies(input_df)
 
-    # Ensure all training columns exist
+    # Match training columns exactly
     for col in columns:
         if col not in input_encoded.columns:
             input_encoded[col] = 0
 
-    # Match column order
+    # Drop extra columns and reorder
     input_encoded = input_encoded[columns]
 
     # Predict
