@@ -2,27 +2,43 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-# Load model
 model = joblib.load("credit_random_forest.pkl")
 
 st.set_page_config(page_title="Credit Risk Predictor")
-st.title("🏦 German Credit Risk Prediction (Simplified Demo)")
+st.title("🏦 Simplified Credit Risk Prediction (Safe Fields)")
 
-# --- Only asking numeric inputs that match the model
-st.write("⚠️ This demo works only with preprocessed numeric inputs the model understands.")
-
+# Safe numeric and manually encodable inputs
 duration = st.number_input("Duration (months)", 1, 72, 12)
 credit_amount = st.number_input("Credit Amount", 250, 20000, 1000)
 age = st.slider("Age", 18, 75, 30)
 existing_credits = st.slider("Existing Credits", 1, 4, 1)
+installment_rate = st.slider("Installment Rate", 1, 4, 2)
+residence_duration = st.slider("Residence Duration (Years)", 1, 4, 2)
+liable_people = st.slider("Number of Liable People", 1, 2, 1)
 
-# You can add more numeric features here if you like
+# Categorical inputs (encoded manually)
+foreign_worker = st.selectbox("Foreign Worker", ["Yes (A201)", "No (A202)"])
+telephone = st.selectbox("Has Telephone?", ["No (A191)", "Yes (A192)"])
+
+# Encoding manually
+foreign_worker_val = 1 if foreign_worker == "Yes (A201)" else 0
+telephone_val = 1 if telephone == "Yes (A192)" else 0
 
 if st.button("🔮 Predict"):
-    # Basic demo inputs — model expects 48 features, so we'll pad rest with 0
-    input_list = [duration, credit_amount, age, existing_credits]
-    input_list += [0] * (48 - len(input_list))  # padding to match model input size
+    input_list = [
+        duration,
+        credit_amount,
+        age,
+        existing_credits,
+        installment_rate,
+        residence_duration,
+        liable_people,
+        telephone_val,
+        foreign_worker_val
+    ]
 
+    # pad to 48 features
+    input_list += [0] * (48 - len(input_list))
     input_df = pd.DataFrame([input_list])
 
     try:
@@ -32,4 +48,4 @@ if st.button("🔮 Predict"):
         else:
             st.error("❌ Prediction: Bad Credit Risk (1)")
     except Exception as e:
-        st.error(f"Error during prediction: {e}")
+        st.error(f"Prediction failed: {e}")
