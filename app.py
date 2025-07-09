@@ -9,7 +9,7 @@ st.write("Predict whether a person is a good or bad credit risk using a trained 
 # Load the trained model
 model = joblib.load("credit_random_forest.pkl")
 
-# --- Simple encoding maps used (match your training logic) ---
+# --- Encoding maps ---
 checking_status_map = {"<0": 0, "0<=X<200": 1, ">=200": 2, "no checking": 3}
 credit_history_map = {
     "no credits/all paid": 0,
@@ -29,7 +29,7 @@ personal_status_map = {
     "male married/widowed": 2, "male divorced/separated": 3
 }
 
-# --- Form for user inputs ---
+# --- Input fields ---
 checking = st.selectbox("Status of checking account", list(checking_status_map.keys()))
 duration = st.slider("Duration in months", 4, 72, 12)
 credit_history = st.selectbox("Credit history", list(credit_history_map.keys()))
@@ -43,25 +43,29 @@ age = st.slider("Age in years", 18, 75, 30)
 
 # --- Predict Button ---
 if st.button("🔮 Predict Credit Risk"):
-    # Convert inputs to numeric using mappings
-    features = [
-        checking_status_map[checking],
-        duration,
-        credit_history_map[credit_history],
-        purpose_map[purpose],
-        amount,
-        savings_account_map[savings],
-        employment_map[employment],
-        installment_rate,
-        personal_status_map[personal_status],
-        age
-    ]
+    try:
+        # Convert to numerical inputs
+        features = [
+            checking_status_map[checking],
+            duration,
+            credit_history_map[credit_history],
+            purpose_map[purpose],
+            amount,
+            savings_account_map[savings],
+            employment_map[employment],
+            installment_rate,
+            personal_status_map[personal_status],
+            age
+        ]
 
-    input_data = np.array([features])  # Shape: (1, 10)
-    prediction = model.predict(input_data)[0]
+        input_data = np.array([features])  # Shape (1, 10)
+        prediction = model.predict(input_data)[0]
 
-    # Output result
-    if prediction == 0:
-        st.success("✅ Prediction: Good Credit Risk (0)")
-    else:
-        st.error("❌ Prediction: Bad Credit Risk (1)")
+        # Show result
+        if prediction == 0:
+            st.success("✅ Prediction: Good Credit Risk (0)")
+        else:
+            st.error("❌ Prediction: Bad Credit Risk (1)")
+
+    except Exception as e:
+        st.error(f"⚠️ Error during prediction: {e}")
