@@ -1,71 +1,84 @@
 import streamlit as st
+import pandas as pd
 import numpy as np
 import joblib
 
-st.set_page_config(page_title="Credit Risk Predictor", layout="centered")
-st.title("🏦 German Credit Risk Prediction App")
-st.write("Predict whether a person is a good or bad credit risk using a trained Random Forest model.")
-
-# Load the trained model
+# Load model and training columns
 model = joblib.load("credit_random_forest.pkl")
 
-# --- Encoding maps ---
-checking_status_map = {"<0": 0, "0<=X<200": 1, ">=200": 2, "no checking": 3}
-credit_history_map = {
-    "no credits/all paid": 0,
-    "all paid": 1,
-    "existing paid": 2,
-    "delayed": 3,
-    "critical/other existing credit": 4
-}
-purpose_map = {
-    "car": 0, "furniture/equipment": 1, "radio/TV": 2,
-    "education": 3, "business": 4, "repair": 5, "vacation": 6, "others": 7
-}
-savings_account_map = {"<100": 0, "100<=X<500": 1, "500<=X<1000": 2, ">=1000": 3, "unknown": 4}
-employment_map = {"unemployed": 0, "<1": 1, "1<=X<4": 2, "4<=X<7": 3, ">=7": 4}
-personal_status_map = {
-    "male single": 0, "female": 1,
-    "male married/widowed": 2, "male divorced/separated": 3
-}
+# You must paste your full feature column list here from training (after pd.get_dummies)
+# This MUST match the training set column names exactly:
+feature_columns = [
+    'duration', 'amount', 'installment_rate', 'age',
+    'checking_<0', 'checking_0<=X<200', 'checking_>=200', 'checking_no checking',
+    'credit_history_all paid', 'credit_history_critical/other existing credit',
+    'credit_history_delayed', 'credit_history_existing paid', 'credit_history_no credits/all paid',
+    'purpose_business', 'purpose_car', 'purpose_education', 'purpose_furniture/equipment',
+    'purpose_others', 'purpose_radio/TV', 'purpose_repair', 'purpose_vacation',
+    'savings_<100', 'savings_100<=X<500', 'savings_500<=X<1000',
+    'savings_>=1000', 'savings_unknown',
+    'employment_unemployed', 'employment_<1', 'employment_1<=X<4',
+    'employment_4<=X<7', 'employment_>=7',
+    'personal_male single', 'personal_female',
+    'personal_male married/widowed', 'personal_male divorced/separated'
+    # add all remaining dummies used during training
+]
 
-# --- Input fields ---
-checking = st.selectbox("Status of checking account", list(checking_status_map.keys()))
-duration = st.slider("Duration in months", 4, 72, 12)
-credit_history = st.selectbox("Credit history", list(credit_history_map.keys()))
-purpose = st.selectbox("Purpose", list(purpose_map.keys()))
-amount = st.number_input("Credit amount", 100, 20000, 1000)
-savings = st.selectbox("Savings account/bonds", list(savings_account_map.keys()))
-employment = st.selectbox("Present employment since", list(employment_map.keys()))
-installment_rate = st.slider("Installment rate (% of income)", 1, 4, 2)
-personal_status = st.selectbox("Personal status and sex", list(personal_status_map.keys()))
-age = st.slider("Age in years", 18, 75, 30)
+# Input form
+st.title("🏦 Credit Risk Prediction (One-Hot Encoded)")
+checking = st.selectbox("Checking Account Status", ["<0", "0<=X<200", ">=200", "no checking"])
+duration = st.slider("Duration (months)", 4, 72, 12)
+credit_history = st.selectbox("Credit History", [
+    "no credits/all paid", "all paid", "existing paid", "delayed", "critical/other existing credit"
+])
+purpose = st.selectbox("Purpose", [
+    "radio/TV", "education", "furniture/equipment", "car", "business", "repair", "vacation", "others"
+])
+amount = st.number_input("Credit Amount", 100, 20000, 1000)
+savings = st.selectbox("Savings Account", ["<100", "100<=X<500", "500<=X<1000", ">=1000", "unknown"])
+employment = st.selectbox("Employment Duration", ["unemployed", "<1", "1<=X<4", "4<=X<7", ">=7"])
+installment_rate = st.slider("Installment Rate", 1, 4, 2)
+personal_status = st.selectbox("Personal Status", [
+    "male single", "female", "male married/widowed", "male divorced/separated"
+])
+age = st.slider("Age", 18, 75, 30)
 
-# --- Predict Button ---
 if st.button("🔮 Predict Credit Risk"):
     try:
-        # Convert to numerical inputs
-        features = [
-            checking_status_map[checking],
-            duration,
-            credit_history_map[credit_history],
-            purpose_map[purpose],
-            amount,
-            savings_account_map[savings],
-            employment_map[employment],
-            installment_rate,
-            personal_status_map[personal_status],
-            age
-        ]
+        # Raw input dictionary
+        raw_data = {
+            "duration": duration,
+            "amount": amount,
+            "installment_rate": installment_rate,
+            "age": age,
+            "checking": checking,
+            "credit_history": credit_history,
+            "purpose": purpose,
+            "savings": savings,
+            "employment": employment,
+            "personal": personal_status
+        }
 
-        input_data = np.array([features])  # Shape (1, 10)
-        prediction = model.predict(input_data)[0]
+        # Create DataFrame
+        df = pd.DataFrame([raw_data])
 
-        # Show result
-        if prediction == 0:
+        # One-hot encode with get_dummies
+        df_encoded = pd.get_dummies(df)
+
+        # Add any missing columns (from training)
+        for col in feature_columns:
+            if col not in df_encoded.columns:
+                df_encoded[col] = 0
+
+        # Reorder columns
+        df_encoded = df_encoded[feature_columns]
+
+        # Predict
+        pred = model.predict(df_encoded)[0]
+        if pred == 0:
             st.success("✅ Prediction: Good Credit Risk (0)")
         else:
             st.error("❌ Prediction: Bad Credit Risk (1)")
 
     except Exception as e:
-        st.error(f"⚠️ Error during prediction: {e}")
+        st.error(f"Error: {e}")
